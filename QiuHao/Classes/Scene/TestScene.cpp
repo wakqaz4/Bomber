@@ -2,7 +2,13 @@
 #include "physics3d\CCPhysics3D.h"
 
 USING_NS_CC;
-static cocos2d::Scene* physicsScene = nullptr;
+//static cocos2d::Scene* physicsScene = nullptr;
+
+#define START_POS_X 3
+#define START_POS_Y 4
+#define START_POS_Z 5
+
+
 /////////////////////////////////
 
 
@@ -24,7 +30,6 @@ bool MainScene::init( void )
 	{
 		/**** 1.init  */
 		getPhysics3DWorld()->setDebugDrawEnable(false);//#include "physics3d\CCPhysics3D.h" : Enable or disable debug drawing.
-		physicsScene = this;
 		Size size = Director::getInstance()->sharedDirector()->getWinSize();
 
 
@@ -65,16 +70,20 @@ bool MainScene::init( void )
 						floor->syncNodeToPhysics();//同步 node 转换为 physics
 						//static object sync is not needed
 						floor->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::NONE);
-		/****debug---------------------------------------------------------------------. */
-						Vec3 position = floor->getPosition3D();//获取节点在父坐标系的位置（X,Y,Z）。 
-						//log("-------------------- %f,%f,%f ", position.x,position.y,position.z );
+		
+		/**** 5.创建角色（武器） */
+	    Sprite3D* weapon = Sprite3D::create("Sprite3DTest/boss.c3b");
+		weapon->setRotation3D(Vec3(-90.0f, 0.0f, 0.0f));
+		weapon->setPosition3D(Vec3(START_POS_X, START_POS_Y, START_POS_Z));
+		weapon->setCameraMask(2);
+	    this->addChild( weapon );
+
 		/****7. */
-		physicsScene->setPhysics3DDebugCamera(this->camera);
+		this->setPhysics3DDebugCamera(this->camera);
 		this->angle = 0.0f;
 		return true;
 	}
 
-	physicsScene = nullptr;
 	return false;
 }
 
@@ -93,10 +102,10 @@ void MainScene::shootBullet(const cocos2d::Vec3 &des)
 		 rbDes.mass = 1.f;													//质量
 		 rbDes.shape = Physics3DShape::createSphere( 0.5f );				//形状
 
-		 Vec3 linearVel = des - this->camera->getPosition3D();				//des = this->camera->getPosition3D() + dir*10.0f 
+		 Vec3 linearVel = des - this->camera->getPosition3D();				//******des = this->camera->getPosition3D() + dir*10.0f 
 			  linearVel.normalize();										//向量规范化
 		      linearVel *= 100.0f;											//修改这个数值可以改变弹出去的速度*****
-
+	
 	PhysicsSprite3D* sprite = PhysicsSprite3D::create("Sprite3DTest/box.c3t", &rbDes);
 	sprite->setTexture( "Images/Icon.png" );
 
@@ -120,25 +129,114 @@ void MainScene::shootBullet(const cocos2d::Vec3 &des)
 		sprite->setCameraMask((unsigned short)CameraFlag::USER1);
 }
 
-void MainScene::shootBullet2(const cocos2d::Vec3 &des)
-{
+/*
+dir1:====0.000000,4541.000000,5000.000000
+dir2:====0.000000,4.257077,4.687379
 
+dir1:====0.000000,4541.000000,5000.000000
+dir2:====0.000000,4.257077,4.687379
+
+dir1:====0.000000,4541.000000,5000.000000
+dir2:====0.000000,16.805103,18.503746
+
+dir1:====0.000000,4541.000000,5000.000000
+dir2:====0.000000,16.805103,18.503746
+
+dir1:====0.000000,4541.000000,5000.000000
+dir2:====0.000000,16.805103,18.503746
+
+dir1:====0.000000,4541.000000,5000.000000
+dir2:====0.000000,16.805103,18.503746
+
+dir1:====0.000000,2083.000000,5000.000000
+dir2:====0.000000,9.612535,23.073778
+
+dir1:====0.000000,2083.000000,5000.000000
+dir2:====0.000000,9.612535,23.073778
+
+dir1:====0.000000,2083.000000,5000.000000
+dir2:====0.000000,9.612535,23.073778
+
+dir1:====0.000000,5083.000000,5000.000000
+dir2:====0.000000,17.819733,17.528755
+
+dir1:====0.000000,5083.000000,5000.000000
+dir2:====0.000000,17.819733,17.528755
+
+dir1:====0.000000,7082.000000,5000.000000
+dir2:====0.000000,20.419649,14.416584
+
+dir1:====0.000000,7082.000000,5000.000000
+dir2:====0.000000,20.419649,14.416584
+
+dir1:====0.000000,9124.000000,5000.000000
+dir2:====0.000000,21.920330,12.012457
+
+dir1:====0.000000,9124.000000,5000.000000
+dir2:====0.000000,21.920330,12.012457
+
+dir1:====0.000000,9124.000000,5000.000000
+dir2:====0.000000,21.920330,12.012457
+
+dir1:====0.000000,10000.000000,5000.000000
+dir2:====0.000000,22.357103,11.178552
+
+dir1:====0.000000,10000.000000,5000.000000
+dir2:====0.000000,22.357103,11.178552
+
+dir1:====0.000000,10000.000000,5000.000000
+dir2:====0.000000,22.357103,11.178552
+
+dir1:====0.000000,10000.000000,5000.000000
+dir2:====0.000000,22.357103,11.178552
+
+*/
+void MainScene::shootBullet2( const cocos2d::Vec3 &des)
+{
+	/**** 1.创建physics BALL 3D精灵*/
+	Physics3DRigidBodyDes rbDes;
+		rbDes.originalTransform.translate(this->camera->getPosition3D());   //矩阵变换
+		rbDes.mass = 1.f;													//质量
+		rbDes.shape = Physics3DShape::createSphere(0.5f);				    //形状
+
+		Vec3 linearVel = des ;												//******des 
+			 linearVel.normalize();											//向量规范化
+			 linearVel *= ( this->uiLayer->getPowerValue() / 250.0f );		//改变速度：power***********
+			 log(" dir2:====%f,%f,%f ", linearVel.x, linearVel.y, linearVel.z);
+
+	PhysicsSprite3D* sprite = PhysicsSprite3D::create("Sprite3DTest/box.c3t", &rbDes);
+	sprite->setTexture("Images/Icon.png");
+
+	/**** 2.设置 3D精灵 刚体属性*/
+	Physics3DRigidBody* rigidBody = static_cast<Physics3DRigidBody*>(sprite->getPhysicsObj()); //class CC_DLL Physics3DRigidBody : public Physics3DObject
+						rigidBody->setLinearFactor(Vec3::ONE);		//设置线性因子
+						rigidBody->setLinearVelocity(linearVel);	//设置线性速度*****
+						rigidBody->setAngularVelocity(Vec3::ZERO);	//设置角速度
+						rigidBody->setCcdMotionThreshold(0.5f);		//设置运动阀
+						rigidBody->setCcdSweptSphereRadius(0.4f);	//设置球面半径
+
+	/**** 3.*/
+	this->addChild(sprite);
+			sprite->setPosition3D(Vec3(START_POS_X, START_POS_Y, START_POS_Z)); //设置起始位置
+			sprite->setScale(0.5f);
+			sprite->syncNodeToPhysics();
+
+	//optimize, only sync node to physics
+	sprite->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::PHYSICS_TO_NODE); //sync node to physics
+
+	sprite->setCameraMask((unsigned short)CameraFlag::USER1);
 
 }
 
 
-
-
 /////////////////////////////////
 /*
-	１.UI坐标系/屏幕坐标系　原点在左上角，X轴向右，Y轴向下。
-	２.GL坐标系　原点在左下角，X轴向右，Y轴向上。
-	３.世界坐标系　指相对于整个屏幕的坐标系，(0,0)就是屏幕的左下角，(320,480)就是屏幕的右上角。
-	４.本地坐标系　相对于父对象的坐标。
-	http://www.cnblogs.com/pengyingh/articles/2513010.html
-
-	CCNode类的setPosition函数，它使用的就是GL坐标系。
-	在处理触摸事件时CCTouch对象中的坐标就是屏幕坐标系。
+	１.UI坐标系/屏幕  坐标系：　原点在左上角，X轴向右，Y轴向下。( 因为要从上向下开始排列图标 )：处理触摸事件
+	２.GL坐标系/cocos 坐标系：　原点在左下角，X轴向右，Y轴向上。（ 右手 ）
+	   GL坐标系下：
+	·世界            坐标系：　就是 GL 坐标系。
+	·本地			  坐标系：　相对于父对象的坐标,也就是节点（CCNode）的坐标系，原点在节点左下角，x轴向右，y轴向上,getPosition3D
+	 http://www.cnblogs.com/pengyingh/articles/2513010.html
 */
 void MainScene::onTouchesBegan(const std::vector<cocos2d::Touch*>& touches, cocos2d::Event  *event)
 {
@@ -169,25 +267,13 @@ void MainScene::onTouchesMoved(const std::vector<cocos2d::Touch*>& touches, coco
 
 void MainScene::onTouchesEnded(const std::vector<cocos2d::Touch*>& touches, cocos2d::Event  *event)
 {
-
 	if ( !this->needShootBox ) return;
-	if ( !touches.empty() )
+
+	if (!touches.empty())
 	{
-		Vec2 location = touches[0]->getLocationInView();//getLocationInView : 当前触摸点在屏幕坐标系下的坐标
-		log("location:------------- %f,%f ", location.x, location.y);//509.000000,309.000000 
-		Vec3 nearP(location.x, location.y, 0.0f), farP(location.x, location.y, 1.0f);
-		nearP = this->camera->unproject( nearP );		//unproject : 把指定坐标点从屏幕坐标转换为世界坐标。 原点在GL屏幕坐标系的左下角。 
-		farP  = this->camera->unproject( farP );
-		log("nearP:------------- %f,%f,%f ", nearP.x, nearP.y,nearP.z);// 0.015909,49.561024,99.101456 
-		log("farP:------------- %f,%f,%f ", farP.x, farP.y,farP.z);//15.910171,-388.993652,-798.583740 
-		Vec3 dir( farP - nearP );
-		log("dir:------------- %f,%f,%f ", dir.x, dir.y, dir.z);//15.894261,-438.554688,-897.685181 
-		shootBullet( this->camera->getPosition3D() + dir*10.0f );
-
-
-		log("camera:----------------- %f,%f,%f ", this->camera->getPosition3D().x, this->camera->getPosition3D().y, this->camera->getPosition3D().z);
-		//0.000000,50.000000,100.000000 
+		Vec3 dir(0, this->uiLayer->getDirValue(), 5000);//设置改变角度：z坐标如果设置太小，效果会不明显
+		log(" dir1:====%f,%f,%f ", dir.x, dir.y, dir.z);
+		shootBullet2(dir);
 		event->stopPropagation();
 	}
-
 }

@@ -3,6 +3,8 @@
 #include "cocos2d.h"
 #include "Layer\UILayer.h"
 
+//Sprite3D : http://www.ziliao1.com/Article/Show/21C3FA1186723D01C4D565F9795F5299.html
+
 class MainScene :public cocos2d::Scene
 {
 public:

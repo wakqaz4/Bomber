@@ -70,7 +70,7 @@ bool UILayer::init()
 			powerSlider->loadProgressBarTexture("MyUI1/sliderProgress1.png");
 			powerSlider->setMaxPercent(10000);														//百分比
 			powerSlider->setPosition(Vec2(visibleSize.width / 2.0f, visibleSize.height / 9.0f));	//位置
-			powerSlider->addEventListener(CC_CALLBACK_2(UILayer::DirSliderEvent, this));
+			powerSlider->addEventListener(CC_CALLBACK_2(UILayer::PowerSliderEvent, this));
 	this->addChild(powerSlider);
 
 
@@ -95,13 +95,10 @@ void UILayer::DirSliderEvent(Ref *pSender, Slider::EventType type)
 	{
 		case Slider::EventType::ON_PERCENTAGE_CHANGED:
 		{
-			//Slider* slider = static_cast<Slider*>(pSender);
-			//this->dirValueLabel->setString(StringUtils::format(" dir : %d", slider->getPercent()));
-
-
-
-
-
+			Slider* slider = static_cast<Slider*>(pSender);
+			int dirValue = slider->getPercent();//返回值( int )：0~10000
+			//log("dir:%d", dirValue);
+			this->setDirValue( dirValue );
 		}
 			break;
 
@@ -113,5 +110,18 @@ void UILayer::DirSliderEvent(Ref *pSender, Slider::EventType type)
 
 void UILayer::PowerSliderEvent(Ref *pSender, Slider::EventType type)
 {
+	switch (type)
+	{
+	case Slider::EventType::ON_PERCENTAGE_CHANGED:
+	{
+		Slider* slider = static_cast<Slider*>(pSender);
+		int powerValue = slider->getPercent();//返回值( int )：0~10000
+		//log("power:%d", powerValue);
+		this->setPowerValue( powerValue );
+	}
+	break;
 
+	default:
+		break;
+	}
 }
