@@ -1,0 +1,39 @@
+# Wavefront MTL
+# Created by fragMOTION
+# http://www.fragmosoft.com
+
+newmtl none
+illum 2
+d 1
+ka 0.2 0.2 0.2
+kd 0.8 0.8 0.8
+ks 0 0 0
+ke 0 0 0
+ns 0
+newmtl body_pc_gen_001
+illum 2
+d 1
+ka 0.2 0.2 0.2
+kd 0.8 0.8 0.8
+ks 0 0 0
+ke 0 0 0
+ns 0
+map_kd C:\Users\Eddie\Desktop\Tales of Blitz-phonia\BATTLE\CHARACTER\exported\gen.bin\body_pc_gen_001.png
+newmtl pcgen01_eye.001
+illum 2
+d 1
+ka 0.2 0.2 0.2
+kd 0.8 0.8 0.8
+ks 0 0 0
+ke 0 0 0
+ns 0
+map_kd C:\Users\Eddie\Desktop\Tales of Blitz-phonia\BATTLE\CHARACTER\exported\gen.bin\pcgen01_eye.011.png
+newmtl pcgen01_mth.001
+illum 2
+d 1
+ka 0.2 0.2 0.2
+kd 0.8 0.8 0.8
+ks 0 0 0
+ke 0 0 0
+ns 0
+map_kd C:\Users\Eddie\Desktop\Tales of Blitz-phonia\BATTLE\CHARACTER\exported\gen.bin\pcgen01_mth.001.png
