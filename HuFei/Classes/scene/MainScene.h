@@ -2,6 +2,7 @@
 #define __MAIN_SCENE_H__
 
 #include "cocos2d.h"
+#include "navmesh\CCNavMesh.h"
 
 class MainScene : public cocos2d::Scene
 {

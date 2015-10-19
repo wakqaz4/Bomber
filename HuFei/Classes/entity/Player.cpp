@@ -1,91 +1,118 @@
 #include "Player.h"
 #include "global\Global.h"
 #include "ui\Bomb.h"
+
 USING_NS_CC;
 
-Player::Player()
-{
 
-}
-Player::~Player()
-{
-
-}
 struct AgentUserData
 {
 	float time;
 };
 
+Player::Player()
+{
+}
+
+Player::~Player()
+{
+}
+
 bool Player::init()
 {
 	if (!Node::init())
 		return false;
-	_tank = Sprite3D::create("model/WoT_IS7/tank_buttom.c3b");
+	_tank = Sprite3D::create("model/tank/tank_buttom.c3b");
 	NavMeshAgentParam param;
 	param.radius = 2.0f;
 	param.height = 8.0f;
 	param.maxSpeed = 8.0f;
 	_agent = NavMeshAgent::create(param);
-//	sprite->_agent->setOrientationRefAxes(Vec3(-1.0f, 0.0f, 1.0f));
 	AgentUserData *data = new AgentUserData{ 0.0f };
 	_agent->setUserData(data);
 	_tank->setScale(1.5f);
 	_tank->addComponent(_agent);
-//	_tank->setTag(1);
-	this->scheduleUpdate();
-	_barrel = Sprite3D::create("model/WoT_IS7/barrel.c3b");
-	_tank->addChild(_barrel);
-
-	_barrel->setPosition3D(Vec3(0.30f,2.0f,1.6f));
-	_barrel->setAnchorPoint(ccp(0.5,0.5));
-	_barrel->setScale(0.5f);
 	_tank->setPosition3D(Vec3(-40.0f, 1.0f, 30.0f));
+
+	_barrel = Sprite3D::create("model/tank/barrel.c3b");
+	_tank->addChild(_barrel);
+	_barrel->setPosition3D(Vec3(0.30f, 2.0f, 1.6f));
+	_barrel->setAnchorPoint(ccp(0.5, 0.5));
+	_barrel->setScale(0.5f);
 	float fRadSeed = 3.14159f / 180.0f;
 	kmMat4 kMat;
 	kmMat4Identity(&kMat);
 	kmMat4RotationX(&kMat, 270 * fRadSeed);
 	Quaternion quat(kMat);
 	_barrel->setRotationQuat(quat);
-	//将坦克模型加载到Node节点
-	
-//	this->addChild(_barrel);
+	this->scheduleUpdate();
+
 	this->addChild(_tank);
-//	this->setPosition3D(Vec3(-40.0f, 1.0f, 30.0f));
 	this->setCameraMask((unsigned short)CameraFlag::USER1);
-	
 	return true;
 }
-static int angleCount = 270;
-void Player::setPlayerAngle(int angle)
-{
+int angleCount = 270;
+#define PI 3.1415926
 
+float Player::calAngle()
+{
+	Vec3 vec = _tank->getRotation3D();
+	float tankAngle = 0.0f;
+	if (vec.x == 0.000000  && vec.y > 0 && vec.z == -0.000000){
+		tankAngle = vec.y;
+	}
+	else if (vec.x == 0.000000 && vec.y < 0 && vec.z == -0.000000)
+	{
+		tankAngle = 360 - fabs(vec.y);
+	}
+	else if (vec.x == 180 && vec.y > 0 && vec.z == -180)
+	{
+		tankAngle = 180 - fabs(vec.y);
+	}
+	else if (vec.x == -180 && vec.y < 0 && vec.z == -180)
+	{
+		tankAngle = 180 + fabs(vec.y);
+	}
+	return tankAngle;
+}
+
+void Player::setBarrelAngle(int angle)
+{
 	float fRadSeed = 3.14159f / 180.0f;
 	kmMat4 kMat;
 	kmMat4Identity(&kMat);
 	kmMat4RotationX(&kMat, (angleCount - angle) * fRadSeed);
 	Quaternion quat(kMat);
+	//调整炮管上下角度
 	_barrel->setRotationQuat(quat);
-	log("down --  %d ", (angleCount+angle));
 }
+
+Global *global = Global::getInstance();
 void Player::update(float dt)
 {
-	Global *global = Global::getInstance();
-	int angle = global->multiBtn->getDirValue();
-	this->setPlayerAngle(angle);
-	log("update %d" ,angle);
+	int a = global->multiBtn->getDirValue();
+	float angle = a;
+	this->setBarrelAngle(a);
+	//发射大炮
+	rotation = calAngle();
 	if (global->multiBtn->getIsFired())
 	{
-		log("fa she pao dan");
 		Bomb *bomb = Bomb::create();
 		Physics3DRigidBodyDes rbDes;
-		rbDes.originalTransform.translate(global->_camera->getPosition3D());
 		rbDes.mass = 1.f;
 		rbDes.shape = Physics3DShape::createSphere(0.5f);
-		bomb->set3DParams("model/box.c3t", "Icon.png", &rbDes, _tank->getPosition3D(), 0.5f);
-
-		bomb->setRigidParams(Vec3::ONE,Vec3::ZERO,0.5f,0.4f);
-		Vec3 dir(0.f, 5291.0f, 5000.0f);//方向向量
-		float power = 30;				//power
+		Vec3 start = _tank->getPosition3D();
+		bomb->set3DParams("model/box.c3t", "Icon.png", &rbDes, start, 0.5f);
+		bomb->setRigidParams(Vec3::ONE, Vec3::ZERO, 0.5f, 0.4f);
+		float l = 6.0f;
+		float x0 = 0.0f, y0 = 0.0f, z0 = 0.0f;
+		y0 = l * std::sin(angle * PI / 180);
+		float l0 = l * std::cos(angle * PI / 180);
+		x0 = start.x + l0 * std::sin(rotation * PI / 180);
+		z0 = start.z + l0 * std::cos(rotation * PI / 180);
+		Vec3 dir(x0, y0, z0);//方向向量
+		dir = dir - start;
+		float power = 100;				//power
 		bomb->setDirAndPower(dir, power);
 		bomb->setCameraMask((unsigned short)CameraFlag::USER1);
 		this->addChild(bomb);
