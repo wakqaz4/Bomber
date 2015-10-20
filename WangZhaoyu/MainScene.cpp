@@ -1,5 +1,7 @@
 #include "MainScene.h"
-#include "common.h"
+#include "../Classes/mainLayer/entity/Player.h"
+#include "common/CannonCommon.h"
+#include <map>
 USING_NS_CC;
 
 Scene* CMainScene::createScene()
@@ -21,53 +23,50 @@ Scene* CMainScene::createScene()
 
 bool CMainScene::init()
 {
+	if (!Scene::init())
+		return false;
 	Size winSize = Director::getInstance()->getWinSize();
-	//Should add gPlayer in version0.2, and use player's ID or name as identification
 
-//Todo: 所有layer的create函数中都应当自动调用其init方法，并在init当中设置touch事件；
-
-
+//Should add gPlayer in version0.2, and use player's ID or name as identification
 //MainLayer & its attaches	
-	//创建mainLayer
-	m_mainLayer = Layer::create();
+	//create mainLayer
+	m_mainLayer = MainLayer::create();
+	this->addChild(m_mainLayer);
 
-	//创建地形
-	/*
+	//在主层初始化前设置相机，并给主场景增加相机
+	Global* global = Global::getInstance();
+	global->multiBtn = MultiFuncButton::create();
+	global->multiBtn->setBoundingGear("images/bounding.png");
+	global->multiBtn->setDirGear("images/testUI01.png");
+	global->multiBtn->setPowerGear("images/testUI01.png");
+	global->multiBtn->setFireButton("images/button.png");
+	//还有一个装饰的大齿轮，素材没调好，不展示
+	global->multiBtn->setIsEnable(true);
+	global->multiBtn->setStep(90.f);
+	global->multiBtn->setScale(0.5f);
+	global->multiBtn->setPosition(winSize.width - 80, winSize.height / 2 - 120);//位置调整要在后
+	this->addChild(global->multiBtn);
 
-	*/
-	//mainLayer->addChild(terrain)
-
-	//创建角色(has a 炮管)	
-	CPlayer* player1 = CPlayer::create();
-	CPlayer* player2 = CPlayer::create();
-	m_mainLayer->addChild(player1);
-	m_mainLayer->addChild(player2);
-	m_playerVector.push_back(player1);
-	m_playerVector.push_back(player2);
 
 
-	//创建炮弹
-	/*
+	Size size = Director::getInstance()->getWinSize();
 
-	*/
-	//mainLayer->addChild(bomb);
 
-	m_camera = Camera::createPerspective(60.0f, winSize.width / winSize.height, 1.0f, 1000.0f);
-	m_camera->setCameraFlag(CameraFlag::USER1);
-	m_mainLayer->addChild(m_camera);
-	m_camera->setPosition3D(Vec3(0.0f, 50.0f, 100.0f));
-	m_camera->lookAt(m_curPlayer->getPosition3D(), Vec3(0.0f, 1.0f, 0.0f));
-	m_mainLayer->setCameraMask(2);
-	
 //UILayer & its attaches
-	//UILayer
+	//UILayer	
 	m_UILayer = UILayer::create();
-	//UIButtons
-	CUIButton* uiButton = CUIButton::create();
-
+	this->addChild(m_UILayer);
+	
 //创建随机行动顺序表
-	m_playersOrderList[0] = player1->m_sPlayerInfo.m_ID;
-	m_playersOrderList[1] = player2->m_sPlayerInfo.m_ID;
+	m_playerVector = Global::getInstance()->m_playersVector;
+	{
+		int i = 0;
+		for (auto iterPlayer = m_playerVector.begin(); iterPlayer != m_playerVector.end(); iterPlayer++)
+		{
+			m_playersOrderList[i++] = (*iterPlayer)->m_sPlayerInfo.m_ID;
+		}
+	}
+	m_curPlayer = Global::getInstance()->_playerObj;
 	m_curPlayerOrder = 0;
 	m_alivePlayersNum = 2;
 	m_deadPlayersNum = 0;
@@ -75,12 +74,30 @@ bool CMainScene::init()
 	m_curTurnIndex = 0;
 
 //注册中断函数
-	REGISTER_INTERRUPTIONS(m_curPlayer->Fired, onPlayerFired);
-	REGISTER_INTERRUPTIONS(m_curPlayer->BombDidLanded, onBombDidLanded);
+	//m_interruptionMap[&(Player::Fired)] = 1;//&(CMainScene::onPlayerFired);
+	
+	//REGISTER_INTERRUPTIONS(&(Player::Fired),&(CMainScene::onPlayerFired));
+	//REGISTER_INTERRUPTIONS(&(Player::BombDidLanded), &(CMainScene::onBombDidLanded));
 	
 //Initialize MainScene's pointers	
 	m_gameState = PREPARING;
 	m_prevGameState = PREPARING;
+
+	m_downCountingTimer = STATE_INTERVAL[DOWN_COUNTING];
+	m_playerActionTimer = STATE_INTERVAL[RUNNING];
+
+	global->_physics3DWorld = this->getPhysics3DWorld();
+	global->_camera = Camera::createPerspective(30.0f, size.width / size.height, 1.0f, 1000.0f);
+	global->_camera->setPosition3D(Vec3(0.0f, 80.0f, 160.0f));
+	global->_camera->lookAt(Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 1.0f, 0.0f));
+	global->_camera->setCameraFlag(CameraFlag::USER1);
+	this->addChild(global->_camera);
+	setPhysics3DDebugCamera(global->_camera);
+
+	_navMesh = NavMesh::create("mesh/all_tiles_tilecache.bin", "mesh/geomset.txt");
+	_navMesh->setDebugDrawEnable(true);
+	setNavMesh(_navMesh);
+	setNavMeshDebugCamera(global->_camera);
 
 //Main logic part is initialized in update
 	this->scheduleUpdate();
@@ -96,25 +113,38 @@ void CMainScene::update(float delta)
 	if (m_gameState == PAUSED || m_gameState == FINISHED)
 	{
 		return;
-	}	
-
-	for (std::map<pFunc, pFunc>::iterator iterFunc = m_interruptionMap.begin(); iterFunc != m_interruptionMap.end(); iterFunc++)
-	{
-		//事件触发，则进行相应处理，从队列中删除事件，并随后添加注册事件；
-		if (1 == iterFunc->first())
-		{
-			iterFunc->second();
-			return;
-		}
 	}
+	if (m_curPlayer == NULL)
+	{
+		return;
+	}
+	//事件触发，则进行相应处理，因m_curPlayer自动变换，因此不需要删除事件重新注册；
+	/*for (std::map<pFunc, pCallbackFunc>::iterator iterFunc = m_interruptionMap.begin(); iterFunc != m_interruptionMap.end(); iterFunc++)
+	{		
+		if ((m_curPlayer->*(iterFunc->first))() == 1)
+		{
+			(this->*(iterFunc->second))();
+		}
+	}*/
 	
-	
+	if (m_curPlayer->Fired())
+	{
+		this->onPlayerFired();
+		return;
+	}
+	if (m_curPlayer->BombDidLanded())
+	{
+		this->onBombDidLanded();
+		return;
+	}
+
 
 	//调整previousState和timer，
 	switch (m_gameState)
 	{
 	case PREPARING:
 		//do nothing
+		m_gameState = DOWN_COUNTING;
 		break;
 	case DOWN_COUNTING:
 		//start down counting
@@ -198,7 +228,7 @@ void CMainScene::update(float delta)
 		//Should've considered reaching the maxTurns of the game	
 
 		//Current player didn't fire
-		m_playerActionTimer = STATE_INTERVAL[RUNNING];
+//		m_playerActionTimer = STATE_INTERVAL[RUNNING];
 		m_gameState = RUNNING;
 		m_curPlayer->DisableAction();
 
@@ -217,12 +247,13 @@ void CMainScene::update(float delta)
 			m_curPlayerOrder++;
 		}
 
-		for (std::vector<CPlayer*>::iterator iterPlayer = m_playerVector.begin(); iterPlayer != m_playerVector.end(); iterPlayer++)
+		for (std::vector<Player*>::iterator iterPlayer = m_playerVector.begin(); iterPlayer != m_playerVector.end(); iterPlayer++)
 		{
 			if ((*iterPlayer)->m_sPlayerInfo.m_ID == m_playersOrderList[m_curPlayerOrder])
 			{
 				m_curPlayer = (*iterPlayer);
-				reRegisterInterruptions();
+				Global::getInstance()->_playerObj = m_curPlayer;
+				//reRegisterInterruptions();
 				break;
 			}
 		}
@@ -247,7 +278,9 @@ int CMainScene::onPlayerFired()
 {
 	m_curPlayer->DisableAction();
 	m_gameState = WAITING;
+#ifdef _BOMB_DEBUG_
 	m_playerWaitingTimer = STATE_INTERVAL[WAITING];
+#endif
 	m_curPlayer->SetFired(0);
 	return 0;
 }
@@ -255,7 +288,7 @@ int CMainScene::onPlayerFired()
 int CMainScene::onBombDidLanded()
 {
 	//逐个对比，从队列中剔除死亡角色，设置为-1,
-	for (std::vector<CPlayer*>::iterator iterPlayer = m_playerVector.begin(); iterPlayer != m_playerVector.end(); iterPlayer++)
+	for (std::vector<Player*>::iterator iterPlayer = m_playerVector.begin(); iterPlayer != m_playerVector.end(); iterPlayer++)
 	{
 		if ((*iterPlayer)->IsDead())
 		{
@@ -296,18 +329,20 @@ int CMainScene::onBombDidLanded()
 			m_curPlayerOrder++;
 		}
 
-		for (std::vector<CPlayer*>::iterator iterPlayer = m_playerVector.begin(); iterPlayer != m_playerVector.end(); iterPlayer++)
+		for (std::vector<Player*>::iterator iterPlayer = m_playerVector.begin(); iterPlayer != m_playerVector.end(); iterPlayer++)
 		{
 			if ((*iterPlayer)->m_sPlayerInfo.m_ID == m_playersOrderList[m_curPlayerOrder])
 			{
 				m_curPlayer = (*iterPlayer);
-				reRegisterInterruptions();
+				Global::getInstance()->_playerObj = m_curPlayer;
+				//reRegisterInterruptions();
 				break;
 			}
 		}
 		m_curPlayer->EnableAction();
 		m_playerActionTimer = STATE_INTERVAL[RUNNING];
 	}
+	m_curPlayer->setIsBombDidLanded(0);
 	return 0;
 }
 
@@ -321,9 +356,11 @@ void CMainScene::deleteOrderListWithIndex(int index)
 	m_playersOrderList[i] = -1;
 }
 
+/*
 void CMainScene::reRegisterInterruptions(void)
 {
 	m_interruptionMap.clear();
-	REGISTER_INTERRUPTIONS(m_curPlayer->Fired, onPlayerFired);
-	REGISTER_INTERRUPTIONS(m_curPlayer->BombDidLanded, onBombDidLanded);
+	REGISTER_INTERRUPTIONS(&m_curPlayer->Fired, &this->onPlayerFired);
+	REGISTER_INTERRUPTIONS(&m_curPlayer->BombDidLanded, &this->onBombDidLanded);
 }
+*/
