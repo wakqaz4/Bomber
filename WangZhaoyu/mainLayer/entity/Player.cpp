@@ -195,6 +195,12 @@ void Player::moveAgent(const cocos2d::Vec3 &des)
 	{
 		return;
 	}
+	Global *global = Global::getInstance();
+
+	if (global->getInstance()->_playerObj != this)
+	{
+		return;
+	}
 	NavMeshAgent::MoveCallback callback = [](NavMeshAgent *agent, float totalTimeAfterMove)
 	{
 		AgentUserData *data = static_cast<AgentUserData *>(agent->getUserData());

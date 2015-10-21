@@ -287,6 +287,8 @@ int CMainScene::onPlayerFired()
 
 int CMainScene::onBombDidLanded()
 {
+	m_gameState = RUNNING;
+	m_curPlayer->setIsBombDidLanded(0);
 	//逐个对比，从队列中剔除死亡角色，设置为-1,
 	for (std::vector<Player*>::iterator iterPlayer = m_playerVector.begin(); iterPlayer != m_playerVector.end(); iterPlayer++)
 	{
@@ -342,7 +344,7 @@ int CMainScene::onBombDidLanded()
 		m_curPlayer->EnableAction();
 		m_playerActionTimer = STATE_INTERVAL[RUNNING];
 	}
-	m_curPlayer->setIsBombDidLanded(0);
+
 	return 0;
 }
 
